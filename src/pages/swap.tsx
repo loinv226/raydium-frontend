@@ -318,12 +318,10 @@ function SwapCard() {
 
   const checkWalletHasEnoughBalance = useWallet((s) => s.checkWalletHasEnoughBalance)
 
-  // Tood: test
-  const haveEnoughUpCoin = true
-  // useMemo(
-  //   () => upCoin && checkWalletHasEnoughBalance(toTokenAmount(upCoin, upCoinAmount, { alreadyDecimaled: true })),
-  //   [upCoin, upCoinAmount, checkWalletHasEnoughBalance, balances]
-  // )
+  const haveEnoughUpCoin = useMemo(
+    () => upCoin && checkWalletHasEnoughBalance(toTokenAmount(upCoin, upCoinAmount, { alreadyDecimaled: true })),
+    [upCoin, upCoinAmount, checkWalletHasEnoughBalance, balances]
+  )
 
   const switchDirectionReversed = useCallback(() => {
     useSwap.setState((s) => ({ directionReversed: !s.directionReversed }))

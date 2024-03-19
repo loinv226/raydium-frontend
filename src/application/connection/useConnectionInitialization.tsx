@@ -96,8 +96,6 @@ export default function useConnectionInitialization() {
       useConnection.getState().currentEndPoint ??
       userSelectedRpc ??
       data.rpcs.find(({ url }) => url === selectedEndpointUrl)
-    globalThis.console.log('selectedEndpointUrl: ', selectedEndpointUrl)
-    globalThis.console.log('currentEndPoint:', currentEndPoint)
 
     const connection = new Connection(userSelectedRpc?.url ?? selectedEndpointUrl, 'confirmed') // TEMP for DEV
 
