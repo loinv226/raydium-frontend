@@ -39,5 +39,11 @@
     "maxNamesPerWrappedLine": 0,
     "maxBindingNamesPerLine": 0,
     "maxDefaultAndBindingNamesPerLine": 0
+  },
+  "[dotenv]": {
+    "editor.defaultFormatter": "foxundermoon.shell-format"
+  },
+  "[ignore]": {
+    "editor.defaultFormatter": "foxundermoon.shell-format"
   }
 }

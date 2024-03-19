@@ -36,6 +36,6 @@ yarn-error.log*
 #ts
 tsconfig.tsbuildinfo
 
-
 # i
 i.json
+.env
