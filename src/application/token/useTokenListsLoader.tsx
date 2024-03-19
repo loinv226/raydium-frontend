@@ -230,11 +230,15 @@ async function fetchTokenList(
           apiCacheInfo?.data &&
           new Date().getDate() - new Date(apiCacheInfo.fetchTime).getDate() <= 0
         ) {
+          globalThis.console.log('fetchUpdatePoolInfo')
+
           const updateInfo = await fetchUpdatePoolInfo()
           const response = {
             official: apiCacheInfo.data.official.map((pool) => updateInfo.get(pool.id) || pool),
             unOfficial: apiCacheInfo.data.unOfficial.map((pool) => updateInfo.get(pool.id) || pool)
           }
+          globalThis.console.log('response LIQUIDITY_V2: ', response)
+
           parseAndSetPoolList(response, apiCacheInfo.fetchTime)
           await fetchNormalLiquidityPoolToken(response as unknown as LiquidityPoolsJsonFile, tokenCollector)
           return
@@ -445,6 +449,7 @@ export function toSplTokenInfo(splToken: SplToken): TokenJson {
 }
 
 async function loadTokens(inputTokenListConfigs: TokenListFetchConfigItem[], canContinue: () => boolean) {
+  globalThis.console.log('loadTokens')
   const { tokenListSettings, tokenJsonInfos, blacklist: existBlacklist } = useToken.getState()
   // const customTokenIcons = await fetchTokenIconInfoList()
   const fetched = await getTokenLists(inputTokenListConfigs, tokenListSettings, tokenJsonInfos, existBlacklist)

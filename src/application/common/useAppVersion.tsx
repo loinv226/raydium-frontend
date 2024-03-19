@@ -10,7 +10,7 @@ import useAppAdvancedSettings from './useAppAdvancedSettings'
 // frontend (client)
 const APP_VERSION = 'V2.11.44'
 
-const APP_VERSION_CHECKING_DELAY_TIME = 1000 * 60 * 1
+const APP_VERSION_CHECKING_DELAY_TIME = 1000 * 60 * 2
 
 interface BackEndVersion {
   latest: string
@@ -45,6 +45,7 @@ export function useAppInitVersionPostHeartBeat() {
   }
   useEffect(() => {
     getVersion()
+
     setInterval(() => {
       getVersion()
     }, APP_VERSION_CHECKING_DELAY_TIME)

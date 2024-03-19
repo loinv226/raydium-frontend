@@ -42,7 +42,9 @@ export default function useInitBalanceRefresher() {
     // from tokenAccount to tokenAmount
     const { wsolBalance, solBalance, allWsolBalance, balances, rawBalances, pureBalances, pureRawBalances } =
       parseBalanceFromTokenAccount({
-        getPureToken: (mint) => getToken(mint, { exact: true }),
+        getPureToken: (mint) => {
+          return getToken(mint, { exact: true })
+        },
         allTokenAccounts
       })
 

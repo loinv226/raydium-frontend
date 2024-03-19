@@ -175,8 +175,10 @@ export const useToken = create<TokenStore>((set, get) => ({
 
     // if not exist, see this as userAddedTokens
     const apiToken = get().tokens[toPubString(mint)] ?? get().lpTokens[toPubString(mint)]
+
     const customizedToken = get().userAddedTokens[toPubString(mint)]
     const token = apiToken ?? customizedToken
+
     return token
   },
 

@@ -14,7 +14,13 @@ import useConnection, { SESSION_STORAGE_USER_SELECTED_RPC } from './useConnectio
 import useAppAdvancedSettings from '../common/useAppAdvancedSettings'
 
 const mockRPCConfig: Omit<Config, 'success'> = {
-  rpcs: [],
+  rpcs: [
+    {
+      name: 'mainnet',
+      url: process.env.NEXT_PUBLIC_SOLANA_MAINNET_RPC ?? 'https://api.mainnet-beta.solana.com',
+      net: 'mainnet'
+    }
+  ],
   devrpcs: [{ name: 'devnet', url: 'https://api.devnet.solana.com/', net: 'devnet' }],
   strategy: 'speed'
 }
@@ -55,43 +61,55 @@ export const rewriteConnection = (connection: Connection) => {
  */
 export default function useConnectionInitialization() {
   const rpcsUrl = useAppAdvancedSettings((s) => s.apiUrls.rpcs)
+
   useEffect(() => {
+    const fixRpcMode = true
+    if (fixRpcMode) {
+      // Todo: dev test
+      const data: any = {}
+      selectRpc(data)
+      return
+    }
+
     useConnection.setState({ isLoading: true })
     jFetch<Config>(rpcsUrl)
-      .then(async (data) => {
-        if (!data) return
-
-        // dev test
-        if (!globalThis.location.host.includes('raydium.io')) {
-          Reflect.set(data, 'rpcs', mockRPCConfig.rpcs)
-          Reflect.set(data, 'devrpcs', mockRPCConfig.devrpcs)
-          Reflect.set(data, 'strategy', mockRPCConfig.strategy)
-        }
-
-        const selectedEndpointUrl = await caculateEndpointUrlByRpcConfig(data)
-        const userSelectedRpc = getSessionItem<Endpoint>(SESSION_STORAGE_USER_SELECTED_RPC)
-
-        const currentEndPoint =
-          useConnection.getState().currentEndPoint ??
-          userSelectedRpc ??
-          data.rpcs.find(({ url }) => url === selectedEndpointUrl)
-
-        const connection = new Connection(userSelectedRpc?.url ?? selectedEndpointUrl, 'confirmed') // TEMP for DEV
-
-        useConnection.setState((s) => ({
-          availableEndPoints: unifyByKey([...(s.availableEndPoints ?? []), ...data.rpcs], (i) => i.url),
-          availableDevEndPoints: data.devrpcs ? unifyByKey(data.devrpcs, (i) => i.url) : undefined,
-          autoChoosedEndPoint: data.rpcs.find(({ url }) => url === selectedEndpointUrl),
-          currentEndPoint,
-          connection,
-          isLoading: false
-        }))
-        // change dev mode in appSetting
-        useAppSettings.setState({ inDev: currentEndPoint?.net === 'devnet' })
-      })
+      .then(selectRpc)
       .catch((e) => {
         useConnection.setState({ isLoading: false })
         console.error(e)
       })
   }, [rpcsUrl])
+
+  function selectRpc(data: any) {
+    if (!data) return
+
+    if (!globalThis.location.host.includes('raydium.io')) {
+      Reflect.set(data, 'rpcs', mockRPCConfig.rpcs)
+      Reflect.set(data, 'devrpcs', mockRPCConfig.devrpcs)
+      Reflect.set(data, 'strategy', mockRPCConfig.strategy)
+    }
+
+    const selectedEndpointUrl = mockRPCConfig.rpcs[0].url
+    const userSelectedRpc = getSessionItem<Endpoint>(SESSION_STORAGE_USER_SELECTED_RPC)
+
+    const currentEndPoint =
+      useConnection.getState().currentEndPoint ??
+      userSelectedRpc ??
+      data.rpcs.find(({ url }) => url === selectedEndpointUrl)
+    globalThis.console.log('selectedEndpointUrl: ', selectedEndpointUrl)
+    globalThis.console.log('currentEndPoint:', currentEndPoint)
+
+    const connection = new Connection(userSelectedRpc?.url ?? selectedEndpointUrl, 'confirmed') // TEMP for DEV
+
+    useConnection.setState((s) => ({
+      availableEndPoints: unifyByKey([...(s.availableEndPoints ?? []), ...data.rpcs], (i) => i.url),
+      availableDevEndPoints: data.devrpcs ? unifyByKey(data.devrpcs, (i) => i.url) : undefined,
+      autoChoosedEndPoint: data.rpcs.find(({ url }) => url === selectedEndpointUrl),
+      currentEndPoint,
+      connection,
+      isLoading: false
+    }))
+    // change dev mode in appSetting
+    useAppSettings.setState({ inDev: currentEndPoint?.net === 'devnet' })
+  }
 }

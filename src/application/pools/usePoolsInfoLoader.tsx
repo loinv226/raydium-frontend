@@ -47,6 +47,7 @@ export default function usePoolsInfoLoader() {
   const pairsUrl = useAppAdvancedSettings((s) => s.apiUrls.pairs)
 
   const shouldLoadInfo = useMemo(() => !pathname.includes('swap'), [pathname.includes('swap')])
+
   useRecordedEffect(
     async ([prevRefreshCount, prevFarmRefreshCount]) => {
       if (!shouldLoadInfo) return
@@ -56,6 +57,7 @@ export default function usePoolsInfoLoader() {
         usePools.getState().jsonInfos.length
       )
         return
+
       const pairJsonInfo = await jFetch<JsonPairItemInfo[]>(pairsUrl, {
         cacheFreshTime: 5 * 60 * 1000
       })
@@ -100,20 +102,23 @@ export default function usePoolsInfoLoader() {
     return isPubEqual(itemMarketProgramId, programIds.OPENBOOK_MARKET)
   })
 
-  useTransitionedEffect(async () => {
-    const hydratedInfos = await lazyMap({
-      source: jsonInfos,
-      loopTaskName: 'pair jsonInfo',
-      loopFn: (pair) =>
-        hydratedPairInfo(pair, {
-          getToken,
-          lpToken: getLpToken(pair.lpMint),
-          lpBalance: balances[toPubString(pair.lpMint)],
-          isStable: stableLiquidityJsonInfoLpMints.includes(pair.lpMint),
-          isOpenBook: isPairInfoOpenBook(pair.ammId)
-        }),
-      options: { priority: pathname.includes('pools') || pathname.includes('liquidity') ? 1 : 0 }
-    })
-    usePools.setState({ hydratedInfos })
-  }, [jsonInfos, lpTokens, getLpToken, getToken, balances, stableLiquidityJsonInfoLpMints, userAddedTokens])
+  // Todo: use this maybe block ui
+  // useTransitionedEffect(async () => {
+  //   globalThis.console.log('hydratedInfos jsonInfos: ', jsonInfos.length)
+  //   globalThis.console.log('hydratedInfos balances: ', Object.keys(balances).length)
+  //   const hydratedInfos = await lazyMap({
+  //     source: jsonInfos,
+  //     loopTaskName: 'pair jsonInfo',
+  //     loopFn: (pair) =>
+  //       hydratedPairInfo(pair, {
+  //         getToken,
+  //         lpToken: getLpToken(pair.lpMint),
+  //         lpBalance: balances[toPubString(pair.lpMint)],
+  //         isStable: stableLiquidityJsonInfoLpMints.includes(pair.lpMint),
+  //         isOpenBook: isPairInfoOpenBook(pair.ammId)
+  //       }),
+  //     options: { priority: pathname.includes('pools') || pathname.includes('liquidity') ? 1 : 0 }
+  //   })
+  //   usePools.setState({ hydratedInfos })
+  // }, [jsonInfos, lpTokens, getLpToken, getToken, balances, stableLiquidityJsonInfoLpMints, userAddedTokens])
 }

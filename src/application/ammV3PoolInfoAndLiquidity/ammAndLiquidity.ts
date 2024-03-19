@@ -31,7 +31,11 @@ import {
   TradeV2,
   fetchMultipleMintInfos,
   ApiPoolInfoItem,
-  Token
+  Token,
+  LIQUIDITY_STATE_LAYOUT_V4,
+  Liquidity,
+  MARKET_STATE_LAYOUT_V3,
+  Market
 } from '@raydium-io/raydium-sdk'
 import { Connection, PublicKey } from '@solana/web3.js'
 import { getEpochInfo } from '../clmmMigration/getEpochInfo'
@@ -62,46 +66,176 @@ async function getOldKeys() {
   return response
 }
 
-async function getApiInfos(props?: { mint1: string; mint2: string }) {
+function map3rdPoolInfoToApiPoolInfoItem(pool: any): ApiPoolInfoItem {
+  return {
+    id: pool.address,
+    baseMint: pool.baseToken,
+    quoteMint: pool.quoteToken,
+    lpMint: pool.lpMint,
+    baseDecimals: pool.baseTokenData?.decimals ?? pool.decimal0,
+    quoteDecimals: pool.quoteTokenData?.decimals ?? pool.decimal0,
+    lpDecimals: pool.decimal0,
+    version: 4,
+    programId: pool.factory
+  } as any
+}
+
+async function getApiInfos(props?: { mint1: string; mint2: string; connection?: Connection }) {
   if (!apiCache.ammV3) {
     apiCache.ammV3 = await getAmmV3PoolKeys()
   }
   if (!apiCache.liquidity) {
     apiCache.liquidity = await getOldKeys()
   }
+
   if (props && apiCache.liquidity) {
     const [mint1, mint2] = props.mint1 < props.mint2 ? [props.mint1, props.mint2] : [props.mint2, props.mint1]
     const allPools = [...apiCache.liquidity.official, ...apiCache.liquidity.unOfficial]
     const { jsonInfos, officialIds, unOfficialIds, extraPooInfos } = useLiquidity.getState()
 
-    if (
-      !allPools.find(
-        (pool) =>
-          (pool.baseMint === mint1 && pool.quoteMint === mint2) || (pool.quoteMint === mint1 && pool.baseMint === mint2)
-      ) ||
-      !jsonInfos.find(
-        (pool) =>
-          (pool.baseMint === mint1 && pool.quoteMint === mint2) || (pool.quoteMint === mint1 && pool.baseMint === mint2)
-      )
-    ) {
+    const poolFromApiCache = allPools.find(
+      (pool) =>
+        (pool.baseMint === mint1 && pool.quoteMint === mint2) || (pool.quoteMint === mint1 && pool.baseMint === mint2)
+    )
+    const poolFromApi = jsonInfos.find(
+      (pool) =>
+        (pool.baseMint === mint1 && pool.quoteMint === mint2) || (pool.quoteMint === mint1 && pool.baseMint === mint2)
+    )
+
+    let poolExist = false
+
+    if (!!poolFromApiCache || !!poolFromApi) {
+      poolExist = true
+    }
+
+    if (!poolExist) {
+      globalThis.console.log('pool not exist')
+    }
+
+    if (!poolExist) {
       useLiquidity.setState({ extraPoolLoading: true })
       const liquidityPoolsUrl = useAppAdvancedSettings.getState().apiUrls.searchPool
-      const response = await jFetch<ApiPoolInfoItem[]>(liquidityPoolsUrl + `${mint1}/${mint2}`, {
+      let response = await jFetch<ApiPoolInfoItem[]>(liquidityPoolsUrl + `${mint1}/${mint2}`, {
         cacheFreshTime: 1000 * 60 * 30
       })
+      if (!response) {
+        // fetch from other provider
+        if (!process.env.NEXT_PUBLIC_POOL_PROVIDER_URL) {
+          throw 'Please set REACT_APP_POOL_PROVIDER_URL in env'
+        }
+
+        let _response = await jFetch<any>(
+          `${process.env.NEXT_PUBLIC_POOL_PROVIDER_URL}/pair?baseToken=${mint1}&chainId=501424`,
+          {
+            cacheFreshTime: 1000 * 60 * 30
+          }
+        ).catch((err) => {
+          globalThis.console.error('error: ', err)
+          return undefined
+        })
+
+        if (!_response || !_response.data) {
+          // fetch from other provider
+          _response = await jFetch<any>(
+            `${process.env.NEXT_PUBLIC_POOL_PROVIDER_URL}/pair?baseToken=${mint2}&chainId=501424`,
+            {
+              cacheFreshTime: 1000 * 60 * 30
+            }
+          ).catch((err) => {
+            globalThis.console.error('error: ', err)
+            return undefined
+          })
+        }
+
+        if (!_response?.data) {
+          globalThis.console.log('POOL NOT FOUND FROM CUSTOM PROVIDER')
+
+          // _response = {
+          //   data: {
+          //     _id: '65f7a6b1b21655453d1d4a08',
+          //     address: '3aaa2jJiuB267YE2aYwRkKfVTBCWLfKrafHtUafQFAxt',
+          //     reserve0: '44594785661936',
+          //     reserve1: '68865206792'
+          //   }
+          // }
+        }
+
+        if (_response?.data) {
+          // get more info
+          const info = await props.connection?.getAccountInfo(new PublicKey(_response.data.address))
+
+          const fakeResponse = map3rdPoolInfoToApiPoolInfoItem(_response.data)
+          if (info) {
+            const poolState = LIQUIDITY_STATE_LAYOUT_V4.decode(info.data)
+
+            const { publicKey: authority } = Liquidity.getAssociatedAuthority({ programId: info.owner })
+
+            fakeResponse.authority = authority.toBase58()
+            fakeResponse.baseMint = poolState.baseMint.toBase58()
+            fakeResponse.baseDecimals = poolState.baseDecimal.toNumber()
+            fakeResponse.quoteMint = poolState.quoteMint.toBase58()
+            fakeResponse.quoteDecimals = poolState.quoteDecimal.toNumber()
+            fakeResponse.lpMint = poolState.lpMint.toBase58()
+            fakeResponse.lpDecimals = fakeResponse.baseDecimals
+            fakeResponse.programId = info.owner.toBase58()
+
+            fakeResponse.openOrders = poolState.openOrders.toBase58()
+            fakeResponse.targetOrders = poolState.targetOrders.toBase58()
+            fakeResponse.baseVault = poolState.baseVault.toBase58()
+            fakeResponse.quoteVault = poolState.quoteVault.toBase58()
+            fakeResponse.withdrawQueue = poolState.withdrawQueue.toBase58()
+            fakeResponse.lpVault = poolState.lpVault.toBase58()
+            fakeResponse.lpMint = poolState.lpMint.toBase58()
+
+            fakeResponse.marketProgramId = poolState.marketProgramId.toBase58()
+            fakeResponse.marketId = poolState.marketId.toBase58()
+
+            const marketData = await props.connection?.getAccountInfo(poolState.marketId)
+            if (marketData) {
+              const marketState = MARKET_STATE_LAYOUT_V3.decode(marketData.data)
+
+              const { publicKey: marketAuthority } = Market.getAssociatedAuthority({
+                programId: poolState.marketProgramId,
+                marketId: poolState.marketId
+              })
+
+              fakeResponse.marketAuthority = marketAuthority.toBase58()
+              fakeResponse.marketBaseVault = marketState.baseVault.toBase58()
+              fakeResponse.marketQuoteVault = marketState.quoteVault.toBase58()
+              fakeResponse.marketBids = marketState.bids.toBase58()
+              fakeResponse.marketAsks = marketState.asks.toBase58()
+              fakeResponse.marketEventQueue = marketState.eventQueue.toBase58()
+            }
+          }
+
+          response = [fakeResponse]
+        }
+      }
+
       if (response && Array.isArray(response)) {
         const newPools = response.filter((pool) => !allPools.find((p) => p.id === pool.id))
+
         apiCache.liquidity.unOfficial.push(...newPools)
 
-        const readyToUpdate = response.filter((pool) => !officialIds.has(pool.id) && !unOfficialIds.has(pool.id))
-        useLiquidity.setState({
-          currentJsonInfo: response[0],
-          jsonInfos: [...jsonInfos, ...readyToUpdate],
-          unOfficialIds: new Set([...Array.from(unOfficialIds), ...readyToUpdate.map((p) => p.id)]),
-          extraPooInfos: [...extraPooInfos, ...readyToUpdate.filter((p) => !extraPooInfos.find((c) => c.id === p.id))]
+        const readyToUpdate = response.filter((pool) => {
+          const result = !officialIds.has(pool.id) && !unOfficialIds.has(pool.id)
+          return result
         })
+
+        const currentInfoPoolId = useLiquidity.getState().currentJsonInfo?.id
+
+        // Todo: fix reload when change pool
+        if (currentInfoPoolId !== response[0].id) {
+          useLiquidity.setState({
+            currentJsonInfo: response[0],
+            jsonInfos: [...jsonInfos, ...readyToUpdate],
+            unOfficialIds: new Set([...Array.from(unOfficialIds), ...readyToUpdate.map((p) => p.id)]),
+            extraPooInfos: [...extraPooInfos, ...readyToUpdate.filter((p) => !extraPooInfos.find((c) => c.id === p.id))]
+          })
+        }
       }
     }
+
     useLiquidity.setState({ extraPoolLoading: false })
   }
 
@@ -203,6 +337,7 @@ export async function getAddLiquidityDefaultPool({
     console.error('input/output is not PublicKeyish')
     return
   }
+  // fetch multiple account info
   const sdkParsedAmmV3PoolInfo = await getSDKParsedClmmPoolInfo({ connection, apiClmmPoolItems: ammV3 })
   const { routes, poolInfosCache } = getSDKCacheInfosOfSwap({
     connection,
@@ -211,6 +346,7 @@ export async function getAddLiquidityDefaultPool({
     apiPoolList: apiPoolList,
     sdkParsedAmmV3PoolInfo: sdkParsedAmmV3PoolInfo
   })
+
   const awaitedPoolInfosCache = await poolInfosCache
   if (!awaitedPoolInfosCache) return
   const addLiquidityDefaultPool = TradeV2.getAddLiquidityDefaultPool({
@@ -235,7 +371,8 @@ export async function getAllSwapableRouteInfos({
 }) {
   const { ammV3, liquidity: apiPoolList } = await getApiInfos({
     mint1: input.mint.toBase58(),
-    mint2: output.mint.toBase58()
+    mint2: output.mint.toBase58(),
+    connection
   })
   assert(
     connection,
@@ -247,6 +384,7 @@ export async function getAllSwapableRouteInfos({
   const { chainTimeOffset } = useConnection.getState()
   const chainTime = ((chainTimeOffset ?? 0) + Date.now()) / 1000
 
+  // get multipale account info
   const sdkParsedAmmV3PoolInfo = await getSDKParsedClmmPoolInfo({
     connection,
     apiClmmPoolItems: ammV3,
@@ -266,7 +404,9 @@ export async function getAllSwapableRouteInfos({
     mintInfos,
     getEpochInfo()
   ])
+
   if (simulateResult.status === 'rejected') return
+
   const awaitedSimulateCache = simulateResult.value
   if (tickResult.status === 'rejected') return
   const awaitedTickCache = tickResult.value
@@ -276,7 +416,11 @@ export async function getAllSwapableRouteInfos({
   const epochInfo = nowEpochResult.value
 
   const _outputToken = deUIToken(output)
-  const outputToken = _outputToken instanceof Token ? new Token(new PublicKey(_outputToken.programId), new PublicKey(_outputToken.mint), _outputToken.decimals) : _outputToken
+  const outputToken =
+    _outputToken instanceof Token
+      ? new Token(new PublicKey(_outputToken.programId), new PublicKey(_outputToken.mint), _outputToken.decimals)
+      : _outputToken
+
   const routeList = TradeV2.getAllRouteComputeAmountOut({
     directPath: routes.directPath,
     routePathDict: routes.routePathDict,
@@ -295,6 +439,7 @@ export async function getAllSwapableRouteInfos({
     (routes.directPath.length > 0 || Object.keys(routes.routePathDict).length > 0) && routeList.length === 0
 
   const { bestResult, bestResultStartTimes } = getBestCalcResult(routeList, awaitedSimulateCache, chainTime) ?? {}
+
   return { routeList, bestResult, bestResultStartTimes, isInsufficientLiquidity }
 }
 
@@ -304,9 +449,9 @@ function getBestCalcResult(
   chainTime: number
 ):
   | {
-    bestResult: ReturnTypeGetAllRouteComputeAmountOut[number]
-    bestResultStartTimes?: BestResultStartTimeInfo[] /* only when bestResult is not ready */
-  }
+      bestResult: ReturnTypeGetAllRouteComputeAmountOut[number]
+      bestResultStartTimes?: BestResultStartTimeInfo[] /* only when bestResult is not ready */
+    }
   | undefined {
   if (!routeList.length) return undefined
   const readyRoutes = routeList.filter((i) => i.poolReady)

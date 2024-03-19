@@ -216,7 +216,9 @@ function useRpcPerformance() {
 
   const getPerformance = useEvent(() => {
     const fetchUrl = useConnection.getState().currentEndPoint?.url
+
     if (!fetchUrl) return
+
     const res = jFetch<{
       result: {
         numSlots: number
@@ -255,12 +257,12 @@ function useRpcPerformance() {
   }, [getPerformance, currentEndPoint?.url, documentVisible])
 }
 
-function useGetSlotCountForSecond() {
+function useGetSlotCountForSecond(forPath = '/farms') {
   const { pathname } = useRouter()
   const currentEndPoint = useConnection((s) => s.currentEndPoint)
 
   useEffect(() => {
-    if (!currentEndPoint || !pathname.startsWith('/farms')) return
+    if (!currentEndPoint || !pathname.startsWith(forPath)) return
     getSlotCountForSecond(currentEndPoint)
     const timeoutId = setInterval(() => getSlotCountForSecond(currentEndPoint), 1000 * 60)
     return () => {
@@ -306,10 +308,12 @@ export function useClientInitialization() {
 }
 
 export function useInnerAppInitialization() {
-  useGetSlotCountForSecond()
+  // useGetSlotCountForSecond()
 
-  useRpcPerformance()
+  // check rpc tps -> only show on ui
+  // useRpcPerformance()
 
+  // get chain info save into app setting
   useDefaultExplorerSyncer()
 
   useSlippageTolerenceSyncer()

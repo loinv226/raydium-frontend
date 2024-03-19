@@ -173,8 +173,14 @@ export function useSwapAmountCalculator() {
           .catch((err) => {
             console.error(err)
           })
-        if (!infos) return
-        if (!canContinue()) return
+        if (!infos) {
+          globalThis.console.log('getAllSwapableRouteInfos not found')
+          return
+        }
+
+        if (!canContinue()) {
+          return
+        }
 
         const { routeList: calcResult, bestResult, bestResultStartTimes, isInsufficientLiquidity } = infos
         const resultStillFresh = (() => {
@@ -187,6 +193,7 @@ export function useSwapAmountCalculator() {
           const focusSideAmount = focusDirectionSide === 'up' ? upCoinAmount : downCoinAmount
           return eq(currentFocusSideAmount, focusSideAmount)
         })()
+
         if (!resultStillFresh) return
 
         // if (focusDirectionSide === 'up') {
@@ -222,7 +229,7 @@ export function useSwapAmountCalculator() {
 
       return abortCalc
     },
-    { debouncedOptions: { delay: 300 } }
+    { debouncedOptions: { delay: 500 } }
   )
 
   // if don't check focusSideCoin, it will calc twice.

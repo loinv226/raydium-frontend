@@ -130,6 +130,7 @@ export default function useLiquidityInfoLoader({ disabled }: { disabled?: boolea
   /** sdkParsed infos (only wallet's LP) ➡  hydrated infos (only wallet's LP)*/
   useTransitionedEffect(async () => {
     if (disabled) return
+
     const hydratedInfos = sdkParsedInfos.map((liquidityInfo) =>
       hydrateLiquidityInfo(liquidityInfo, {
         getToken,
@@ -150,6 +151,7 @@ export default function useLiquidityInfoLoader({ disabled }: { disabled?: boolea
           hydratedInfos.map((i) => toPubString(i.id))
         )
       if (areHydratedIdsNotChanged) return
+
       const recordedHydratedInfos = hydratedInfos.map((i) => {
         getUserTokenEvenNotExist(i.baseMint)
         getUserTokenEvenNotExist(i.quoteMint)
