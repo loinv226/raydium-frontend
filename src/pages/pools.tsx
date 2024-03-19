@@ -789,6 +789,7 @@ function PoolCardDatabaseBody({
   const loading = jsonInfos.length == 0 && hydratedInfos.length === 0
   const expandedPoolIds = usePools((s) => s.expandedPoolIds)
   const [favouriteIds, setFavouriteIds] = usePoolFavoriteIds()
+
   return !loading && (searchedItemsLength === 0 || (searchedItemsLength !== 0 && sortedItems?.length === 0)) ? (
     <div className="text-center text-2xl p-12 opacity-50 text-[rgb(171,196,255)]">{'(No results found)'}</div>
   ) : sortedItems && sortedItems.length ? (

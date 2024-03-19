@@ -119,36 +119,45 @@ function ApplicationsInitializations() {
 
   /********************** connection **********************/
   useUserCustomizedEndpointInitLoad()
+  // Todo: can direct set connection instead get from api
   useConnectionInitialization()
+  // update chaintime from api then use in swap + liquidity
   useFreshChainTimeOffset()
 
   /********************** message boards **********************/
-  useMessageBoardFileLoader() // load `raydium-message-board.json`
-  useMessageBoardReadedIdRecorder() // sync user's readedIds
+  // useMessageBoardFileLoader() // load `raydium-message-board.json`
+
+  // Todo: cach readedIds then show on navbar
+  // useMessageBoardReadedIdRecorder() // sync user's readedIds
 
   /********************** wallet **********************/
 
   // experimental features. will not let user see
   // useInitShadowKeypairs()
+  // impl iwallet for solana wallet
   useSyncWithSolanaWallet()
+  // register event on wallet when idle
   useWalletConnectNotifaction()
+  // set txVersion on hook, maybe use in rpc call
   useWalletTxVersionDetector()
   useTokenAccountsRefresher()
   useInitBalanceRefresher()
+  // listen account change, trigger observers (from useTokenAccountsRefresher)
   useWalletAccountChangeListeners()
 
   /********************** token **********************/
   // application initializations
   useAutoUpdateSelectableTokens()
   useTokenListsLoader()
-  useLpTokensLoader()
+  // this can ignore, then token data get from tokens in useToken stroe not from lpTokens
+  // useLpTokensLoader()
   useTokenPriceRefresher()
   useTokenMintAutoRecord()
   useTokenListSettingsLocalStorage()
   useTokenGetterFnLoader()
 
   /* ----- load liquidity info (jsonInfo, sdkParsedInfo, hydratedInfo) ----- */
-  useLiquidityInfoLoader()
+  // useLiquidityInfoLoader()
   useAutoCleanLiquidityInfoCache()
   useAutoCleanSwapInfoCache()
 
@@ -156,17 +165,17 @@ function ApplicationsInitializations() {
   usePoolsInfoLoader()
 
   /********************** concentrated pools **********************/
-  useConcentratedInfoLoader()
-  useConcentratedAprCalcMethodSyncer()
+  // useConcentratedInfoLoader()
+  // useConcentratedAprCalcMethodSyncer()
 
   /********************** concentrated migration **********************/
-  useCLMMMigrationLoadInfo()
+  // useCLMMMigrationLoadInfo()
 
   /********************** farm **********************/
-  useFarmInfoLoader()
+  // useFarmInfoLoader()
 
   /********************** staking **********************/
-  useStealDataFromFarm() // auto inject apr to farm info from backend pair interface
+  // useStealDataFromFarm() // auto inject apr to farm info from backend pair interface
 
   /********************** txHistory **********************/
   useInitRefreshTransactionStatus()

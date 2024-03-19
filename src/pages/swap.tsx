@@ -94,7 +94,7 @@ export default function Swap() {
         <SwapHead />
         <SwapCard />
         {/* <UnwrapWSOL /> */}
-        <KLineChart />
+        {/* <KLineChart /> */}
       </PageLayout>
     </SwapUIContextProvider>
   )
@@ -318,10 +318,12 @@ function SwapCard() {
 
   const checkWalletHasEnoughBalance = useWallet((s) => s.checkWalletHasEnoughBalance)
 
-  const haveEnoughUpCoin = useMemo(
-    () => upCoin && checkWalletHasEnoughBalance(toTokenAmount(upCoin, upCoinAmount, { alreadyDecimaled: true })),
-    [upCoin, upCoinAmount, checkWalletHasEnoughBalance, balances]
-  )
+  // Tood: test
+  const haveEnoughUpCoin = true
+  // useMemo(
+  //   () => upCoin && checkWalletHasEnoughBalance(toTokenAmount(upCoin, upCoinAmount, { alreadyDecimaled: true })),
+  //   [upCoin, upCoinAmount, checkWalletHasEnoughBalance, balances]
+  // )
 
   const switchDirectionReversed = useCallback(() => {
     useSwap.setState((s) => ({ directionReversed: !s.directionReversed }))
